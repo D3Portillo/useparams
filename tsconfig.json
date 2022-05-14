@@ -1,0 +1,22 @@
+{
+  "include": ["lib", "playground/*.jsx"],
+  "compilerOptions": {
+    "types": ["vite/client"],
+    "lib": ["dom", "esnext"],
+    "strict": true,
+    "allowJs": true,
+    "outDir": "tscompiled",
+    "target": "esnext",
+    "module": "esnext",
+    "sourceMap": false,
+    "incremental": true,
+    "esModuleInterop": true,
+    "moduleResolution": "node",
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@dev/useparams": ["./lib/index.ts"]
+    }
+  }
+}
