@@ -1,7 +1,7 @@
 <p align="center">
 	<img src="https://raw.githubusercontent.com/D3Portillo/useparams/master/assets/header.png">
 	<small>
-	<b>useparams:</b> A tiny system consistent < 1KB React hook to consume and manipulate params
+	<b>useparams:</b> A tiny <em>System consistent</em> < 1KB React hook to consume and manipulate query string params.
 <small>
 </p>
 
