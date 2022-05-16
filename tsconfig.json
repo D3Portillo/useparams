@@ -1,11 +1,7 @@
 {
-  "include": ["lib", "playground/*.jsx"],
+  "include": ["lib", "playground/useparams.ts"],
   "compilerOptions": {
-    "types": ["vite/client"],
     "lib": ["dom", "esnext"],
-    "strict": true,
-    "allowJs": true,
-    "outDir": "tscompiled",
     "target": "esnext",
     "module": "esnext",
     "sourceMap": false,
@@ -16,7 +12,7 @@
     "skipLibCheck": true,
     "resolveJsonModule": true,
     "paths": {
-      "@dev/useparams": ["./lib/index.ts"]
+      "dev_useparams": ["./lib/index.d.ts"]
     }
   }
 }
