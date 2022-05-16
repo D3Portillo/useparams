@@ -2,29 +2,28 @@ import path from "path";
 import { defineConfig } from "vite";
 import reactPlugin from "@vitejs/plugin-react";
 
-const LIB_ENTRY = path.resolve(__dirname, "../lib/index.ts");
+const LIB_DEV_ENTRY = path.resolve(__dirname, "../lib/index.ts");
+const LIB_NAME = __dirname;
 export default defineConfig({
   plugins: [reactPlugin()],
   build: {
     lib: {
-      entry: LIB_ENTRY,
-      name: __dirname,
+      entry: LIB_DEV_ENTRY,
+      name: LIB_NAME,
       formats: ["es"],
       fileName: (format) => `${LIB_NAME}.${format}.js`,
     },
     rollupOptions: {
       external: ["react", "react-dom"],
       output: {
-        globals: {
-          react: "React",
-          "react-dom": "ReactDOM",
-        },
+        react: "React",
+        "react-dom": "ReactDOM",
       },
     },
   },
   resolve: {
     alias: {
-      "@dev/useparams": LIB_ENTRY,
+      dev_useparams: LIB_DEV_ENTRY,
     },
   },
 });
