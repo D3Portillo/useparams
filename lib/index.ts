@@ -2,71 +2,119 @@ import { useEffect, useState } from "react";
 
 type Params<T> = { [name: string]: any } & T;
 type Param<T> = keyof Params<T>;
-
-const getDomParams = (): Params<{}> => {
-  return [...new URLSearchParams(location.search) as any].reduce(
-    (acc, [name, value]) => {
-      return {
-        ...acc,
-        [name]: value,
-      };
-    },
-    {}
-  );
+const USEPARAMS = "USEPARAMS";
+const POPSTATE = "popstate";
+const str = "?s";
+const num = "?n";
+const bool = "?b";
+/** string::'true' */
+const True = "true";
+export const pmask = {
+  str,
+  num,
+  bool,
+};
+const hist = () => (window && window.history) || ({} as typeof history);
+const getUrlParams = () => new URLSearchParams(location.search);
+/** Object.keys(of) */
+const kof = (obj: any) => Object.keys(obj);
+const getHistParams = (): Params<{}> => {
+  const state = hist().state;
+  return state && state[USEPARAMS]
+    ? state[USEPARAMS]
+    : [...(getUrlParams() as any)].reduce((acc, [name, value]) => {
+        return {
+          ...acc,
+          [name]: value,
+        };
+      }, {});
 };
 
-const __safeParamsUpdate = (params: URLSearchParams) => {
-  const strParams = params.toString();
-  const url = new URL(`?${strParams}`, window.location as any).toString();
-  if (window.history) {
-    window.history.replaceState({}, "", url);
-  } else {
-    location.search = strParams;
+const getParamsHref = (params: URLSearchParams) =>
+  new URL(`?${params.toString()}`, location as any).toString();
+
+const safelyPushState = (
+  param: string,
+  urlParams: URLSearchParams,
+  histState: Params<{}>
+) => {
+  if (param) {
+    dispatchEvent(
+      new CustomEvent(POPSTATE, {
+        detail: {
+          param,
+        },
+      })
+    );
   }
+  hist().pushState({ [USEPARAMS]: histState }, "", getParamsHref(urlParams));
 };
 
 export const removeParam = (name: string) => {
-  const curParams = new URLSearchParams(location.search);
-  curParams.set(name, ""); // If many remove all and keep 1
-  curParams.delete(name);
-  __safeParamsUpdate(curParams);
+  const histParams = getHistParams();
+  const urlParams = getUrlParams();
+  urlParams.delete(name);
+  delete histParams[name];
+  safelyPushState(name, urlParams, histParams);
 };
 
 export const setParam = (name: string, value: any) => {
-  const curParams = new URLSearchParams(location.search);
-  curParams.set(name, value);
-  __safeParamsUpdate(curParams);
-  return curParams;
+  const urlParams = getUrlParams();
+  urlParams.set(name, value + "");
+  safelyPushState(name, urlParams, { ...getHistParams(), [name]: value });
 };
 
-export const useParams = <T>(defaultParamVals: Params<T>): Params<T> => {
-  const [stateUpdates, setStateUpdates] = useState(0);
+export const useParams = <T>(defaultParams: Params<T>): Params<T> => {
+  const [triggerEffect, setTriggerEffect] = useState(0);
   const [params, setParams] = useState({});
 
   useEffect(() => {
-    const domParams = getDomParams();
-    const keys = [...Object.keys(domParams), ...Object.keys(defaultParamVals)];
+    const histParams = getHistParams();
+    const urlParams = getUrlParams();
+    const maskOverrides = {};
+    let triggerPush = ""; // falsy param name;
     const getParamValue = (name: string) => {
-      const defaultValue = defaultParamVals[name as Param<T>];
-      if (domParams[name]) return domParams[name];
-      if (defaultValue) {
-        return setParam(name, defaultValue).get(name);
+      const defaultValue = defaultParams[name as Param<T>];
+      const histParamValue = histParams[name];
+      const urlParamValue = urlParams.get(name);
+      const inDefaultVals = name in defaultParams;
+      // If ?urlParam="undefined" developer expects undefined as value
+      if (urlParamValue === "undefined") return undefined;
+      if ([str, num, bool].includes(defaultValue)) {
+        // Since value is a mask, it's value is stored from history.state
+        maskOverrides[name] = histParamValue;
+        if (defaultValue == num) return (urlParamValue as any) * 1;
+        return defaultValue == bool ? urlParamValue == True : urlParamValue;
       }
-      return null;
+      if (inDefaultVals && urlParamValue === null) {
+        triggerPush = True;
+        urlParams.set(name, defaultValue);
+      }
+      return histParamValue === undefined ? defaultValue : histParamValue;
     };
-    setParams(
-      keys.reduce((obj, name) => ({ ...obj, [name]: getParamValue(name) }), {})
+    const hookParams = [...kof(histParams), ...kof(defaultParams)].reduce(
+      (obj, name) => ({ ...obj, [name]: getParamValue(name) }),
+      {}
     );
-  }, [location.search, stateUpdates]);
+    setParams(hookParams);
+    const params = { ...hookParams, ...maskOverrides };
+    safelyPushState(triggerPush, urlParams, params);
+  }, [triggerEffect]);
 
   useEffect(() => {
-    window.history.replaceState = new Proxy(window.history.replaceState, {
-      apply: (fn, __this, props) => {
-        setStateUpdates((n) => n + 1);
-        return fn.apply(__this, props as any);
-      },
-    });
+    function proxyFn({ detail }: CustomEvent) {
+      const param = detail && detail.param;
+      if (!param || param in defaultParams || param === True) {
+        setTriggerEffect((n) => n + 1);
+      }
+      /**
+       * Re-render component if param is actually invoked by the hook
+       * NOTE: param == false when it's an origial POPSTATE.
+       * NOTE: param === "true" when POPSTATE is called urlParam update.
+       */
+    }
+    addEventListener(POPSTATE, proxyFn);
+    return () => removeEventListener(POPSTATE, proxyFn);
   }, []);
-
   return params as Params<T>;
 };
