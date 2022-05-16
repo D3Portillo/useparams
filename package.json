@@ -1,12 +1,30 @@
 {
   "name": "useparams",
+  "license": "MIT",
+  "author": {
+    "name": "Denny Portillo"
+  },
+  "keywords": [
+    "useparams",
+    "react",
+    "query-string",
+    "url",
+    "parameters"
+  ],
+  "bugs": {
+    "url": "https://github.com/D3Portillo/useparams/issues"
+  },
+  "homepage": "https://github.com/D3Portillo/useparams",
   "files": [
     "dist"
   ],
+  "types": "./dist/index.d.ts",
   "version": "0.0.1",
   "scripts": {
-    "build:lib": "vite build",
-    "build:ui": "vite build playground",
+    "build": "vite build && cp lib/*.d.ts dist/",
+    "pack:untar": "tar -xf useparams*.tgz",
+    "build:pack": "npm run build && npm pack && npm run pack:untar && npm ln package",
+    "start:pack": "npm run build:pack && vite --mode PACK playground",
     "start": "vite playground"
   },
   "main": "./dist/index.umd.js",
