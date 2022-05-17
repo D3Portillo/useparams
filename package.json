@@ -4,6 +4,7 @@
   "author": {
     "name": "Denny Portillo"
   },
+  "description": "A tiny System consistent < 1KB React hook to consume and manipulate query string params.",
   "keywords": [
     "useparams",
     "react",
@@ -15,16 +16,18 @@
     "url": "https://github.com/D3Portillo/useparams/issues"
   },
   "homepage": "https://github.com/D3Portillo/useparams",
+  "repository": "D3Portillo/useparams",
   "files": [
     "dist"
   ],
   "types": "./dist/index.d.ts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
-    "build": "vite build && cp lib/*.d.ts dist/",
+    "build": "vite build && cp lib/*.d.ts -t dist/",
     "pack:untar": "tar -xf useparams*.tgz",
     "build:pack": "npm run build && npm pack && npm run pack:untar && npm ln package",
     "start:pack": "npm run build:pack && vite --mode PACK playground",
+    "roll": "npm run build && npm publish",
     "start": "vite playground"
   },
   "main": "./dist/index.umd.js",
