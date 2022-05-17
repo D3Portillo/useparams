@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 
 type Params<T> = { [name: string]: any } & T;
-type Param<T> = keyof Params<T>;
 const USEPARAMS = "USEPARAMS";
 const POPSTATE = "popstate";
 const str = "?s";
@@ -14,20 +13,24 @@ export const pmask = {
   num,
   bool,
 };
-const hist = () => (window && window.history) || ({} as typeof history);
+const noOp = () => null;
+const hist = () =>
+  (typeof window != "undefined" ? window.history : {}) as typeof history;
 const getUrlParams = () => new URLSearchParams(location.search);
 /** Object.keys(of) */
 const kof = (obj: any) => Object.keys(obj);
 const getHistParams = (): Params<{}> => {
   const state = hist().state;
-  return state && state[USEPARAMS]
-    ? state[USEPARAMS]
-    : [...(getUrlParams() as any)].reduce((acc, [name, value]) => {
-        return {
-          ...acc,
-          [name]: value,
-        };
-      }, {});
+  // We first check if satate was user->next prev pushed
+  if (state && state[USEPARAMS]) return state[USEPARAMS];
+  if (window[USEPARAMS]) return window[USEPARAMS];
+  return [...(getUrlParams() as any)].reduce(
+    (acc, [name, value]) => ({
+      ...acc,
+      [name]: value,
+    }),
+    {}
+  );
 };
 
 const getParamsHref = (params: URLSearchParams) =>
@@ -46,8 +49,9 @@ const safelyPushState = (
         },
       })
     );
+    window[USEPARAMS] = histState;
+    hist().pushState({ [USEPARAMS]: histState }, "", getParamsHref(urlParams));
   }
-  hist().pushState({ [USEPARAMS]: histState }, "", getParamsHref(urlParams));
 };
 
 export const removeParam = (name: string) => {
@@ -74,10 +78,12 @@ export const useParams = <T>(defaultParams: Params<T>): Params<T> => {
     const maskOverrides = {};
     let triggerPush = ""; // falsy param name;
     const getParamValue = (name: string) => {
-      const defaultValue = defaultParams[name as Param<T>];
+      const defaultValue = defaultParams[name];
       const histParamValue = histParams[name];
       const urlParamValue = urlParams.get(name);
       const inDefaultVals = name in defaultParams;
+      const value =
+        histParamValue === undefined ? defaultValue : histParamValue;
       // If ?urlParam="undefined" developer expects undefined as value
       if (urlParamValue === "undefined") return undefined;
       if ([str, num, bool].includes(defaultValue)) {
@@ -88,9 +94,9 @@ export const useParams = <T>(defaultParams: Params<T>): Params<T> => {
       }
       if (inDefaultVals && urlParamValue === null) {
         triggerPush = True;
-        urlParams.set(name, defaultValue);
+        urlParams.set(name, value);
       }
-      return histParamValue === undefined ? defaultValue : histParamValue;
+      return value;
     };
     const hookParams = [...kof(histParams), ...kof(defaultParams)].reduce(
       (obj, name) => ({ ...obj, [name]: getParamValue(name) }),
@@ -102,6 +108,14 @@ export const useParams = <T>(defaultParams: Params<T>): Params<T> => {
   }, [triggerEffect]);
 
   useEffect(() => {
+    const Next = "next" in window && window["next"];
+    const mockRouter = {
+      events: {
+        on: noOp as (e: string, fn: any) => void,
+        off: noOp as (e: string, fn: any) => void,
+      },
+    };
+    const NextRouter: typeof mockRouter = Next.router || mockRouter;
     function proxyFn({ detail }: CustomEvent) {
       const param = detail && detail.param;
       if (!param || param in defaultParams || param === True) {
@@ -114,7 +128,11 @@ export const useParams = <T>(defaultParams: Params<T>): Params<T> => {
        */
     }
     addEventListener(POPSTATE, proxyFn);
-    return () => removeEventListener(POPSTATE, proxyFn);
+    NextRouter.events.on("routeChangeComplete", proxyFn);
+    return () => {
+      removeEventListener(POPSTATE, proxyFn);
+      NextRouter.events.off("routeChangeComplete", proxyFn);
+    };
   }, []);
   return params as Params<T>;
 };
